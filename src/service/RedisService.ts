@@ -17,7 +17,7 @@ const DATA_TYPE = {
 export const REDIS_KEY = {
     OTP_STOGE: 'otp_stoge',
     OTP_VALIDATE: 'otp_validate',
-    OTP_KEY_STOGE: 'otp_stoge',
+    OTP_KEY_STOGE: 'otp_key_stoge',
 };
 
 @Service()
