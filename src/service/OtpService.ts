@@ -14,6 +14,7 @@ import { OtpIdType } from '../model/enum/OtpIdType';
 import { OtpTxtType } from '../model/enum/OtpTxtType';
 import { totp } from 'otplib';
 import { Logger, Errors, Utils } from 'common';
+import moment from 'moment';
 
 @Service()
 export default class OtpService {
@@ -21,7 +22,7 @@ export default class OtpService {
     private cacheService: CacheService;
 
     public async generateAndSendOtp(otpRequest: IOtpRequest): Promise<IOtpResponse> {
-        let now: Date = new Date();
+        const now: Date = new Date();
         const invalidParams = new Errors.InvalidParameterError();
         Utils.validate(otpRequest.id, 'id').setRequire().throwValid(invalidParams);
         Utils.validate(otpRequest.idType, 'idType').setRequire().throwValid(invalidParams);
@@ -51,14 +52,18 @@ export default class OtpService {
             let otpVerify: IOtpVerify = await this.cacheService.findOtpValidation(otpRequest.id);
             otpVerify.failCount = otpVerify.failCount + 1;
             otpVerify.count = otpVerify.count + 1;
-            if (Utils.addTime(otpVerify.latestRequest, Config.app.otpMaxGenTime, 's') < now) {
+            if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, Config.app.otpMaxGenTime, 's'))) {
                 throw new Errors.GeneralError(constants.OTP_GENERATE_TO_FAST);
             }
             if (otpVerify.count >= Config.app.otpMaxGenTime) {
                 throw new Errors.GeneralError(constants.OTP_LIMIT_GENERATE);
             }
             if (otpVerify.failCount >= Config.app.otpFailRetryTimes) {
-                if (Utils.addTime(otpVerify.latestRequest, Config.app.otpTemporarilyLockedTime, 's') < now) {
+                if (
+                    moment(now).isBefore(
+                        Utils.addTime(otpVerify.latestRequest, Config.app.otpTemporarilyLockedTime, 's')
+                    )
+                ) {
                     throw new Errors.GeneralError(constants.OTP_TEMPORARILY_LOCKED);
                 }
                 otpVerify.failCount = 1;
