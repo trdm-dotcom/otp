@@ -12,7 +12,9 @@ export default class CacheService {
 
     public async findOtpValidation(key: string): Promise<IOtpVerify> {
         let date: Date = new Date();
-        let realKey: string = `${REDIS_KEY.OTP_VALIDATE}_${key}_${Utils.formatDateToDisplay(date)}`;
+        let realKey: string = `${REDIS_KEY.OTP_VALIDATE}_${key}_${Utils.formatDateToDisplay(
+            Utils.addTime(date, 7, 'h')
+        )}`;
         let data: IOtpVerify = await this.redisService.get<IOtpVerify>(realKey);
         if (data) {
             return data;
@@ -24,7 +26,9 @@ export default class CacheService {
     public addOtpValidation(key: string, otpVerify: IOtpVerify): void {
         let date: Date = new Date();
         let lifeTime = 60 * 60 * 24;
-        let realKey: string = `${REDIS_KEY.OTP_VALIDATE}_${key}_${Utils.formatDateToDisplay(date)}`;
+        let realKey: string = `${REDIS_KEY.OTP_VALIDATE}_${key}_${Utils.formatDateToDisplay(
+            Utils.addTime(date, 7, 'h')
+        )}`;
         this.redisService.set<IOtpVerify>(realKey, otpVerify, { EX: lifeTime });
     }
 

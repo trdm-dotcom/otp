@@ -21,7 +21,7 @@ export default class OtpService {
     private cacheService: CacheService;
 
     public async generateAndSendOtp(otpRequest: IOtpRequest): Promise<IOtpResponse> {
-        let now: number = Date.now();
+        let now: Date = new Date();
         const invalidParams = new Errors.InvalidParameterError();
         Utils.validate(otpRequest.id, 'id').setRequire().throwValid(invalidParams);
         Utils.validate(otpRequest.idType, 'idType').setRequire().throwValid(invalidParams);
@@ -36,7 +36,7 @@ export default class OtpService {
 
         let otpId: string = uuidv4();
         let otpLifeTime: number = 0;
-        switch (OtpIdType[otpRequest.idType]) {
+        switch (otpRequest.idType) {
             case OtpIdType.EMAIL:
                 otpLifeTime = Config.app.otpLifeTime.email;
                 break;
@@ -51,15 +51,14 @@ export default class OtpService {
             let otpVerify: IOtpVerify = await this.cacheService.findOtpValidation(otpRequest.id);
             otpVerify.failCount = otpVerify.failCount + 1;
             otpVerify.count = otpVerify.count + 1;
-            let latestRequest: number = otpVerify.latestRequest.getTime();
-            if (new Date(latestRequest + Config.app.otpMaxGenTime * 1000) <= new Date(now)) {
+            if (Utils.addTime(otpVerify.latestRequest, Config.app.otpMaxGenTime, 's') < now) {
                 throw new Errors.GeneralError(constants.OTP_GENERATE_TO_FAST);
             }
             if (otpVerify.count >= Config.app.otpMaxGenTime) {
                 throw new Errors.GeneralError(constants.OTP_LIMIT_GENERATE);
             }
             if (otpVerify.failCount >= Config.app.otpFailRetryTimes) {
-                if (new Date(latestRequest + Config.app.otpTemporarilyLockedTime * 1000) <= new Date(now)) {
+                if (Utils.addTime(otpVerify.latestRequest, Config.app.otpTemporarilyLockedTime, 's') < now) {
                     throw new Errors.GeneralError(constants.OTP_TEMPORARILY_LOCKED);
                 }
                 otpVerify.failCount = 1;
@@ -71,7 +70,7 @@ export default class OtpService {
                 throw new Errors.GeneralError(err.message);
             }
             let otpVerify: IOtpVerify = {
-                username: otpRequest.id,
+                otpId: otpRequest.id,
                 failCount: 0,
                 count: 1,
                 latestRequest: new Date(now),
@@ -85,8 +84,7 @@ export default class OtpService {
             step: otpLifeTime,
         };
         let otpValue = totp.generate(otpPrivateKey.toString());
-        Logger.info(otpValue);
-        let expiredTime = now + otpLifeTime * 1000;
+        let expiredTime = Utils.addTime(now, otpLifeTime, 's');
         let verification: Otp = new Otp(otpId, otpValue, OtpTxtType[otpRequest.txtType], OtpIdType[otpRequest.idType]);
         this.cacheService.addOtp(otpId, verification, otpLifeTime);
         let response: IOtpResponse = {
@@ -97,7 +95,7 @@ export default class OtpService {
     }
 
     public async verifyOtp(verifyOtpRequest: IVerifyOtpRequest): Promise<IVerifyOtpResponse> {
-        let now: number = Date.now();
+        let now: Date = new Date();
         const invalidParams = new Errors.InvalidParameterError();
         Utils.validate(verifyOtpRequest.otpId, 'otpId').setRequire().throwValid(invalidParams);
         Utils.validate(verifyOtpRequest.otpValue, 'otpValue').setRequire().throwValid(invalidParams);
@@ -127,7 +125,7 @@ export default class OtpService {
                 throw new Errors.GeneralError(constants.INCORRECT_OTP);
             }
             otpLifeTime = Config.app.otpVerifyTime;
-            let expiredTime: Date = new Date(now + otpLifeTime * 1000);
+            let expiredTime: Date = Utils.addTime(now, otpLifeTime, 's');
             let jwtPrivateKey: Buffer = utils.getPrivateKey(Config.app.key.jwt.privateKey);
             let otpKey: string = await utils.generateToken(
                 {
