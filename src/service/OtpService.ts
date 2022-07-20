@@ -1,8 +1,8 @@
 import IOtpRequest from '../model/request/IOtpRequest';
 import IOtpResponse from '../model/response/IOtpResponse';
 import IVerifyOtpRequest from '../model/request/IVerifyOtprRequest';
-import Config from '../Config';
-import utils from '../utils/utils';
+import config from '../Config';
+import * as utils from '../utils/Utils';
 import { v4 as uuidv4 } from 'uuid';
 import * as constants from '../Constants';
 import { Inject, Service } from 'typedi';
@@ -28,10 +28,10 @@ export default class OtpService {
         Utils.validate(otpRequest.idType, 'idType').setRequire().throwValid(invalidParams);
         Utils.validate(otpRequest.txtType, 'txtType').setRequire().throwValid(invalidParams);
         invalidParams.throwErr();
-        if (Object.values(OtpIdType).includes(otpRequest.idType)) {
+        if (!Object.values(OtpIdType).includes(otpRequest.idType)) {
             throw new Errors.GeneralError(constants.INVALID_ID_TYPE);
         }
-        if (Object.values(OtpTxtType).includes(otpRequest.txtType)) {
+        if (!Object.values(OtpTxtType).includes(otpRequest.txtType)) {
             throw new Errors.GeneralError(constants.INVALID_TYPE);
         }
 
@@ -39,29 +39,29 @@ export default class OtpService {
         let otpLifeTime: number = 0;
         switch (otpRequest.idType) {
             case OtpIdType.EMAIL:
-                otpLifeTime = Config.app.otpLifeTime.email;
+                otpLifeTime = config.app.otpLifeTime.email;
                 break;
             case OtpIdType.SMS:
-                otpLifeTime = Config.app.otpLifeTime.sms;
+                otpLifeTime = config.app.otpLifeTime.sms;
                 break;
             default:
-                otpLifeTime = Config.app.otpLifeTime.email;
+                otpLifeTime = config.app.otpLifeTime.email;
         }
 
         try {
             let otpVerify: IOtpVerify = await this.cacheService.findOtpValidation(otpRequest.id);
             otpVerify.failCount = otpVerify.failCount + 1;
             otpVerify.count = otpVerify.count + 1;
-            if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, Config.app.otpMaxGenTime, 's'))) {
+            if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, config.app.otpMaxGenTime, 's'))) {
                 throw new Errors.GeneralError(constants.OTP_GENERATE_TO_FAST);
             }
-            if (otpVerify.count >= Config.app.otpMaxGenTime) {
+            if (otpVerify.count >= config.app.otpMaxGenTime) {
                 throw new Errors.GeneralError(constants.OTP_LIMIT_GENERATE);
             }
-            if (otpVerify.failCount >= Config.app.otpFailRetryTimes) {
+            if (otpVerify.failCount >= config.app.otpFailRetryTimes) {
                 if (
                     moment(now).isBefore(
-                        Utils.addTime(otpVerify.latestRequest, Config.app.otpTemporarilyLockedTime, 's')
+                        Utils.addTime(otpVerify.latestRequest, config.app.otpTemporarilyLockedTime, 's')
                     )
                 ) {
                     throw new Errors.GeneralError(constants.OTP_TEMPORARILY_LOCKED);
@@ -70,8 +70,8 @@ export default class OtpService {
             }
             this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
         } catch (err: any) {
-            if (err.message !== constants.OBJECT_NOT_FOUND) {
-                Logger.error(`generateAndSendOtp error ${err.message}`);
+            Logger.error(`generateAndSendOtp error ${err}`);
+            if (err.code !== constants.OBJECT_NOT_FOUND) {
                 throw new Errors.GeneralError(err.message);
             }
             let otpVerify: IOtpVerify = {
@@ -83,7 +83,7 @@ export default class OtpService {
             Logger.info('otpValidation Info: {}', otpVerify);
             this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
         }
-        let otpPrivateKey: Buffer = utils.getPrivateKey(Config.app.key.otp.privateKey);
+        let otpPrivateKey: Buffer = utils.getKey(config.app.key.otp.privateKey);
         totp.options = {
             digits: 6,
             step: otpLifeTime,
@@ -110,17 +110,17 @@ export default class OtpService {
             let otpLifeTime: number = 0;
             switch (redisOtp.otpIdType) {
                 case OtpIdType.EMAIL:
-                    otpLifeTime = Config.app.otpLifeTime.email;
+                    otpLifeTime = config.app.otpLifeTime.email;
                     break;
                 case OtpIdType.SMS:
-                    otpLifeTime = Config.app.otpLifeTime.sms;
+                    otpLifeTime = config.app.otpLifeTime.sms;
                     break;
                 default:
-                    otpLifeTime = Config.app.otpLifeTime.email;
+                    otpLifeTime = config.app.otpLifeTime.email;
                     break;
             }
 
-            let otpPrivateKey: Buffer = utils.getPrivateKey(Config.app.key.otp.privateKey);
+            let otpPrivateKey: Buffer = utils.getKey(config.app.key.otp.privateKey);
             totp.options = {
                 digits: 6,
                 step: otpLifeTime,
@@ -129,9 +129,9 @@ export default class OtpService {
             if (!result) {
                 throw new Errors.GeneralError(constants.INCORRECT_OTP);
             }
-            otpLifeTime = Config.app.otpVerifyTime;
+            otpLifeTime = config.app.otpVerifyTime;
             let expiredTime: Date = Utils.addTime(now, otpLifeTime, 's');
-            let jwtPrivateKey: Buffer = utils.getPrivateKey(Config.app.key.jwt.privateKey);
+            let jwtPrivateKey: Buffer = utils.getKey(config.app.key.jwt.privateKey);
             let otpKey: string = await utils.generateToken(
                 {
                     txType: redisOtp.otpTxType,

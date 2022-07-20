@@ -15,11 +15,15 @@ export default class CacheService {
         let realKey: string = `${REDIS_KEY.OTP_VALIDATE}_${key}_${Utils.formatDateToDisplay(
             Utils.addTime(date, 7, 'h')
         )}`;
-        let data: IOtpVerify = await this.redisService.get<IOtpVerify>(realKey);
-        if (data) {
-            return data;
-        } else {
-            throw new Errors.GeneralError(constants.OBJECT_NOT_FOUND);
+        try {
+            let data: IOtpVerify = await this.redisService.get<IOtpVerify>(realKey);
+            if (data) {
+                return data;
+            } else {
+                throw new Errors.GeneralError(constants.OBJECT_NOT_FOUND);
+            }   
+        } catch (error:any) {
+            throw error
         }
     }
 
@@ -34,11 +38,15 @@ export default class CacheService {
 
     public async findOtp(key: string): Promise<Otp> {
         let realKey: string = `${REDIS_KEY.OTP_STOGE}_${key}`;
-        let data: Otp = await this.redisService.get<Otp>(realKey);
-        if (data) {
-            return data;
-        } else {
-            throw new Errors.GeneralError(constants.OTP_ID_INVALID);
+        try {
+            let data: Otp = await this.redisService.get<Otp>(realKey);
+            if (data) {
+                return data;
+            } else {
+                throw new Errors.GeneralError(constants.OTP_ID_INVALID);
+            }   
+        } catch (error:any) {
+            throw error
         }
     }
 

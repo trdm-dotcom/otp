@@ -1,6 +1,4 @@
-import * as dotenv from 'dotenv';
 import { v4 as uuid } from 'uuid';
-dotenv.config();
 
 const nodeId = uuid();
 
@@ -24,13 +22,13 @@ let Config = {
         otpTemporarilyLockedTime: 1800, // seconds
         otpVerifyTime: 86400, // seconds
         otpLifeTime: {
-            email: (process.env.OTP_LIFE_TIME && parseInt(process.env.OTP_LIFE_TIME)) || 300,
-            sms: (process.env.OTP_LIFE_TIME && parseInt(process.env.OTP_LIFE_TIME)) || 300,
+            email: 300,
+            sms: 300,
         },
         key: {
             otp: {
-                privateKey: './../../external/otp_private.key',
-                publicKey: './../../external/otp_public.key',
+                privateKey: 'external/key/otp_private.key',
+                publicKey: 'external/key/otp_public.key',
             },
             jwt: {
                 publicKey: 'external/key/jwt_public.key',
@@ -47,7 +45,7 @@ let Config = {
                 application: { type: 'console' },
                 file: {
                     type: 'file',
-                    filename: './../../logs/application_otp.log',
+                    filename: './../logs/otp/application.log',
                     compression: true,
                     maxLogSize: 10485760,
                     backups: 100,
@@ -60,15 +58,15 @@ let Config = {
     },
 };
 
-try {
-    const env = require('./env');
-    if (env) {
-        Config = { ...Config, ...env(Config) };
-    }
-    console.log(`config: ${JSON.stringify(Config)}`);
-} catch (e) {
-    console.log(`error while load env.js :${e}`);
-}
+// try {
+//     const env = require('./env');
+//     if (env) {
+//         Config = { ...Config, ...env(Config) };
+//     }
+//     console.log(`config: ${JSON.stringify(Config)}`);
+// } catch (e) {
+//     console.log(`error while load env.js :${e}`);
+// }
 
 Config.kafkaConsumerOptions = {
     ...(Config.kafkaCommonOptions ? Config.kafkaCommonOptions : {}),

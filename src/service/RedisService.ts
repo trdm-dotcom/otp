@@ -1,6 +1,6 @@
-import * as redis from 'redis';
+import {createClient, RedisClientType} from 'redis';
 import { Service } from 'typedi';
-import Config from '../Config';
+import config from '../Config';
 import { Logger, Errors } from 'common';
 import * as Constants from '../Constants';
 
@@ -22,19 +22,18 @@ export const REDIS_KEY = {
 
 @Service()
 export default class RedisService {
-    private client: redis.RedisClientType;
+    private client: RedisClientType;
 
     public init() {
-        this.client = redis.createClient(Config.redis);
-        this.client
-            .connect()
-            .then(() => {
-                Logger.info('connected to redis!');
-            })
-            .catch((err: any) => {
-                Logger.error(`connected redis error ${err}`);
-                throw new Errors.GeneralError(Constants.INTERNAL_ERROR);
-            });
+        this.client = createClient(config.redis);
+        this.client.connect();
+        this.client.on('connect', () => {
+            Logger.info('connected to redis!');
+        });
+        this.client.on('error', (error: any) => {
+            Logger.error(`connected redis error ${error}`);
+            throw new Errors.GeneralError(Constants.INTERNAL_ERROR);
+        })    
     }
 
     public async set<T>(key: string, value: T, option: any): Promise<void> {

@@ -11,15 +11,15 @@ Logger.info('Starting...');
 async function init() {
     Logger.info('run service otp');
     const redisService = Container.get(RedisService);
-    await redisService.init();
+    redisService.init();
     const topicConf = {
         ...Config.kafkaTopicOptions,
         'auto.offset.reset': 'earliest',
     };
     Kafka.create(Config, Config.kafkaConsumerOptions, true, topicConf, Config.kafkaProducerOptions);
     Kafka.createService(Kafka.getInstance(), {
-        nodeId: Config.nodeId,
         serviceName: Config.clusterId,
+        nodeId: Config.nodeId,
         listeningTopic: Config.clusterId,
     });
     const requestHandler = Container.get(RequestHandler);
