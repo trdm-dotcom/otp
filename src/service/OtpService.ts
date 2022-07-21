@@ -71,8 +71,8 @@ export default class OtpService {
             this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
         } catch (err: any) {
             Logger.error(`generateAndSendOtp error ${err}`);
-            if (err.code !== constants.OBJECT_NOT_FOUND) {
-                throw new Errors.GeneralError(err.message);
+            if (!err.code.equals(constants.OBJECT_NOT_FOUND)) {
+                throw err;
             }
             let otpVerify: IOtpVerify = {
                 otpId: otpRequest.id,
@@ -127,7 +127,7 @@ export default class OtpService {
             };
             let result = totp.verify({ token: verifyOtpRequest.otpValue, secret: otpPrivateKey.toString() });
             if (!result) {
-                throw new Errors.GeneralError(constants.INCORRECT_OTP);
+                throw new Error(constants.INCORRECT_OTP);
             }
             otpLifeTime = config.app.otpVerifyTime;
             let expiredTime: Date = Utils.addTime(now, otpLifeTime, 's');

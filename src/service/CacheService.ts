@@ -11,9 +11,8 @@ export default class CacheService {
     private readonly redisService: RedisService;
 
     public async findOtpValidation(key: string): Promise<IOtpVerify> {
-        let date: Date = new Date();
         let realKey: string = `${REDIS_KEY.OTP_VALIDATE}_${key}_${Utils.formatDateToDisplay(
-            Utils.addTime(date, 7, 'h')
+            Utils.addTime(new Date(), 7, 'h')
         )}`;
         try {
             let data: IOtpVerify = await this.redisService.get<IOtpVerify>(realKey);
@@ -23,15 +22,14 @@ export default class CacheService {
                 throw new Errors.GeneralError(constants.OBJECT_NOT_FOUND);
             }   
         } catch (error:any) {
-            throw error
+            throw new Errors.GeneralError(error.message);
         }
     }
 
     public addOtpValidation(key: string, otpVerify: IOtpVerify): void {
-        let date: Date = new Date();
         let lifeTime = 60 * 60 * 24;
         let realKey: string = `${REDIS_KEY.OTP_VALIDATE}_${key}_${Utils.formatDateToDisplay(
-            Utils.addTime(date, 7, 'h')
+            Utils.addTime(new Date(), 7, 'h')
         )}`;
         this.redisService.set<IOtpVerify>(realKey, otpVerify, { EX: lifeTime });
     }
@@ -46,7 +44,7 @@ export default class CacheService {
                 throw new Errors.GeneralError(constants.OTP_ID_INVALID);
             }   
         } catch (error:any) {
-            throw error
+            throw new Errors.GeneralError(error.message);
         }
     }
 
