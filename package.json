@@ -14,6 +14,7 @@
   "dependencies": {
     "@types/uuid": "^8.3.4",
     "common": "github:trdm-dotcom/common#main",
+    "jackson-js": "^1.1.0",
     "jsonwebtoken": "^8.5.1",
     "moment": "^2.29.3",
     "mongoose": "^6.3.4",

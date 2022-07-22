@@ -35,9 +35,31 @@ let Config = {
                 privateKey: 'external/key/jwt_private.key',
             },
         },
+        temmplate: {
+            vi:{
+                reset_password: {
+                    email: 'reset_password_vi',
+                    sms: 'sms_otp_vi'
+                },
+                verify: {
+                    email: 'email_otp_verify_vi',
+                    sms: 'sms_otp_vi'
+                }
+            },
+            en:{
+                reset_password: {
+                    email: 'reset_password_en',
+                    sms: 'sms_otp_en'
+                },
+                verify: {
+                    email: 'email_otp_verify_en',
+                    sms: 'sms_otp_en'
+                }
+            },
+        }
     },
     topic: {
-        otp: 'otp',
+        notification: 'notification',
     },
     logger: {
         config: {
