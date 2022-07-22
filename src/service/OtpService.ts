@@ -13,8 +13,10 @@ import IVerifyOtpResponse from '../model/response/IVerifyOtpResponse';
 import { OtpIdType } from '../model/enum/OtpIdType';
 import { OtpTxtType } from '../model/enum/OtpTxtType';
 import { totp } from 'otplib';
-import { Logger, Errors, Utils } from 'common';
+import { Logger, Errors, Utils, NotificationMessage, MethodEnum, SmsConfiguration, EmailConfiguration, Kafka } from 'common';
 import moment from 'moment';
+import Config from '../Config';
+import {ObjectMapper} from 'jackson-js';
 
 @Service()
 export default class OtpService {
@@ -22,6 +24,7 @@ export default class OtpService {
     private cacheService: CacheService;
 
     public async generateAndSendOtp(otpRequest: IOtpRequest): Promise<IOtpResponse> {
+        const objectMapper: ObjectMapper = new ObjectMapper();
         const now: Date = new Date();
         const invalidParams = new Errors.InvalidParameterError();
         Utils.validate(otpRequest.id, 'id').setRequire().throwValid(invalidParams);
@@ -35,28 +38,15 @@ export default class OtpService {
             throw new Errors.GeneralError(constants.INVALID_TYPE);
         }
 
-        let otpId: string = uuidv4();
-        let otpLifeTime: number = 0;
-        switch (otpRequest.idType) {
-            case OtpIdType.EMAIL:
-                otpLifeTime = config.app.otpLifeTime.email;
-                break;
-            case OtpIdType.SMS:
-                otpLifeTime = config.app.otpLifeTime.sms;
-                break;
-            default:
-                otpLifeTime = config.app.otpLifeTime.email;
-        }
-
         try {
             let otpVerify: IOtpVerify = await this.cacheService.findOtpValidation(otpRequest.id);
             otpVerify.failCount = otpVerify.failCount + 1;
             otpVerify.count = otpVerify.count + 1;
             if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, config.app.otpMaxGenTime, 's'))) {
-                throw new Errors.GeneralError(constants.OTP_GENERATE_TO_FAST);
+                throw new Error(constants.OTP_GENERATE_TO_FAST);
             }
             if (otpVerify.count >= config.app.otpMaxGenTime) {
-                throw new Errors.GeneralError(constants.OTP_LIMIT_GENERATE);
+                throw new Error(constants.OTP_LIMIT_GENERATE);
             }
             if (otpVerify.failCount >= config.app.otpFailRetryTimes) {
                 if (
@@ -64,39 +54,86 @@ export default class OtpService {
                         Utils.addTime(otpVerify.latestRequest, config.app.otpTemporarilyLockedTime, 's')
                     )
                 ) {
-                    throw new Errors.GeneralError(constants.OTP_TEMPORARILY_LOCKED);
+                    throw new Error(constants.OTP_TEMPORARILY_LOCKED);
                 }
                 otpVerify.failCount = 1;
             }
             this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
         } catch (err: any) {
             Logger.error(`generateAndSendOtp error ${err}`);
-            if (!err.code.equals(constants.OBJECT_NOT_FOUND)) {
-                throw err;
+            if (err.message != constants.OBJECT_NOT_FOUND) {
+                throw new Errors.GeneralError(err.message);
             }
             let otpVerify: IOtpVerify = {
                 otpId: otpRequest.id,
                 failCount: 0,
                 count: 1,
-                latestRequest: new Date(now),
+                latestRequest: now,
             };
             Logger.info('otpValidation Info: {}', otpVerify);
             this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
         }
+
         let otpPrivateKey: Buffer = utils.getKey(config.app.key.otp.privateKey);
+        let otpId: string = uuidv4();
+        let otpLifeTime: number = 0;
+        let notificationMessage: NotificationMessage = new NotificationMessage();
+        notificationMessage.setLocale('vi');
+        switch (otpRequest.idType) {
+            case OtpIdType.EMAIL:{
+                otpLifeTime = config.app.otpLifeTime.email;
+                notificationMessage.setMethod(MethodEnum.EMAIL);
+                let emailConfiguration: EmailConfiguration = new EmailConfiguration();
+                emailConfiguration.setToList([otpRequest.id]);
+                emailConfiguration.setSubject(constants.SUBJECT[otpRequest.txtType]['vi']);
+                notificationMessage.setConfiguration(emailConfiguration, objectMapper);
+                break;
+            }
+            case OtpIdType.SMS:{
+                otpLifeTime = config.app.otpLifeTime.sms;
+                notificationMessage.setMethod(MethodEnum.SMS); 
+                let smsConfiguration: SmsConfiguration = new SmsConfiguration();
+                smsConfiguration.setPhoneNumber(otpRequest.id);
+                notificationMessage.setConfiguration(smsConfiguration, objectMapper);
+                break;
+            }
+        }
         totp.options = {
             digits: 6,
             step: otpLifeTime,
         };
-        let otpValue = totp.generate(otpPrivateKey.toString());
-        let expiredTime = Utils.addTime(now, otpLifeTime, 's');
-        let verification: Otp = new Otp(otpId, otpValue, OtpTxtType[otpRequest.txtType], OtpIdType[otpRequest.idType]);
-        this.cacheService.addOtp(otpId, verification, otpLifeTime);
+        let otpValue: string = totp.generate(otpPrivateKey.toString());
+        let expiredTime: Date = Utils.addTime(now, otpLifeTime, 's');
+        let otp: Otp = new Otp(otpId, otpValue, otpRequest.txtType, otpRequest.idType);
+        
+        let template :Map<string, Object> = new Map<string, Object>();
+        let value: Object = this.valueTemplate(otpValue, otpRequest, otpLifeTime / 60);
+        template.set(Config.app.temmplate['vi'][otpRequest.txtType.toLowerCase()][otpRequest.idType.toLowerCase()], value);
+        notificationMessage.setTemplate(template);
+        Kafka.getInstance().sendMessage('', Config.topic.notification, '', notificationMessage);        
+
+        this.cacheService.addOtp(otpId, otp, otpLifeTime);
         let response: IOtpResponse = {
             otpId: otpId,
-            expiredTime: new Date(expiredTime),
+            expiredTime: expiredTime,
         };
         return response;
+    }
+
+    private valueTemplate(otpValue: string, otpRequest: IOtpRequest, expiredInMinute: number): Object{
+        switch (otpRequest.idType) {
+            case OtpIdType.EMAIL: {
+                return {
+                    otp: otpValue,
+                    expiredInMinute: expiredInMinute
+                }
+            }
+            case OtpIdType.SMS:{
+                return {
+                    otp: otpValue
+                }
+            }
+        }
     }
 
     public async verifyOtp(verifyOtpRequest: IVerifyOtpRequest): Promise<IVerifyOtpResponse> {

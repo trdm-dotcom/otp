@@ -9,3 +9,13 @@ export const OTP_TEMPORARILY_LOCKED = 'OTP_TEMPORARILY_LOCKED';
 export const INCORRECT_OTP = 'INCORRECT_OTP';
 export const OTP_ID_INVALID = 'OTP_ID_INVALID';
 export const INTERNAL_ERROR = 'INTERNAL_ERROR';
+export const SUBJECT = {
+    RESET_PASSWORD: {
+        vi: '',
+        en: ''
+    },
+    VERIFY: {
+        vi: '',
+        en: ''
+    }
+}

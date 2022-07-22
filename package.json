@@ -5,6 +5,7 @@
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {
+    "test": "node build/src/index.js",
     "start": "npm run build && node build/src/index.js",
     "build": "tsc -p tsconfig.json"
   },
@@ -13,7 +14,8 @@
   "license": "ISC",
   "dependencies": {
     "@types/uuid": "^8.3.4",
-    "common": "github:trdm-dotcom/common#main",
+    "common": "file:../common",
+    "jackson-js": "^1.1.0",
     "jsonwebtoken": "^8.5.1",
     "moment": "^2.29.3",
     "mongoose": "^6.3.4",

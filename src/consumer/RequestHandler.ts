@@ -1,7 +1,7 @@
 import { Inject, Service } from 'typedi';
 import OtpService from '../service/OtpService';
 import { Errors, Kafka, Logger } from 'common';
-import Config from '../Config';
+import config from '../Config';
 
 @Service()
 export default class RequestHandler {
@@ -9,13 +9,13 @@ export default class RequestHandler {
     private otpService: OtpService;
 
     public init() {
-        const handle: Kafka.MessageHandler = new Kafka.MessageHandler(Kafka.getInstance());
-        new Kafka.ConsumerHandler(
-            Config,
-            Config.kafkaConsumerOptions,
-            Config.requestHandlerTopics,
-            (message: any) => handle.handle(message, this.handleRequest),
-            Config.kafkaTopicOptions
+        const handle: Kafka.KafkaRequestHandler = new Kafka.KafkaRequestHandler(Kafka.getInstance());
+        Kafka.createConsumer(
+            config,
+            config.kafkaConsumerOptions,
+            config.requestHandlerTopics,
+            (message: Kafka.IKafkaMessage) => handle.handle(message, this.handleRequest),
+            config.kafkaTopicOptions
         );
     }
 
@@ -25,12 +25,12 @@ export default class RequestHandler {
         } else {
             Logger.info('Endpoint received message: ', message);
             switch (message.uri) {
-                case '/post/api/v1/otp':
+                case 'post:/api/v1/otp':
                     return this.otpService.generateAndSendOtp(message.data);
-                case '/post/api/v1/otp/verify':
+                case 'post:/api/v1/otp/verify':
                     return this.otpService.verifyOtp(message.data);
             }
+            return false;
         }
-        return false;
     };
 }

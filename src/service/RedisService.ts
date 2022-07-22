@@ -1,7 +1,7 @@
 import {createClient, RedisClientType} from 'redis';
 import { Service } from 'typedi';
 import config from '../Config';
-import { Logger, Errors } from 'common';
+import { Logger } from 'common';
 import * as Constants from '../Constants';
 
 const DATA_TYPE = {
@@ -15,24 +15,24 @@ const DATA_TYPE = {
 };
 
 export const REDIS_KEY = {
-    OTP_STOGE: 'otp_stoge',
+    OTP_STORAGE: 'otp_storage',
     OTP_VALIDATE: 'otp_validate',
-    OTP_KEY_STOGE: 'otp_key_stoge',
+    OTP_KEY_STORAGE: 'otp_key_storage',
 };
 
 @Service()
 export default class RedisService {
     private client: RedisClientType;
 
-    public init() {
+    public async init() {
         this.client = createClient(config.redis);
-        this.client.connect();
+        await this.client.connect();
         this.client.on('connect', () => {
             Logger.info('connected to redis!');
         });
         this.client.on('error', (error: any) => {
             Logger.error(`connected redis error ${error}`);
-            throw new Errors.GeneralError(Constants.INTERNAL_ERROR);
+            throw new Error(Constants.INTERNAL_ERROR);
         })    
     }
 
@@ -47,7 +47,7 @@ export default class RedisService {
         } else if (typeof value == 'string') {
             valueAsString = `${DATA_TYPE.STRING}${value}`;
         } else if (typeof value == 'object') {
-            valueAsString = `${DATA_TYPE.BOOLEAN}${JSON.stringify(value)}`;
+            valueAsString = `${DATA_TYPE.OBJECT}${JSON.stringify(value)}`;
         } else if (typeof value == 'boolean') {
             valueAsString = `${DATA_TYPE.BOOLEAN}${value ? 1 : 0}`;
         } else if (value instanceof Date) {
@@ -73,6 +73,7 @@ export default class RedisService {
             return null;
         } else {
             const type: string = data[0];
+            console.log(type);
             let content: string = null;
             switch (type) {
                 case DATA_TYPE.UNDEFINED:
