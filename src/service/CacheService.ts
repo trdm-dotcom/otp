@@ -52,6 +52,6 @@ export default class CacheService {
 
     public removeVerifiedOtp(key: string) {
         let realKey: string = `${REDIS_KEY.OTP_STORAGE}_${key}`;
-        this.redisService.set<any>(realKey, '', { PX: 1 });
+        this.redisService.set<any>(realKey, null, { PX: 1 });
     }
 }
