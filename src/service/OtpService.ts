@@ -23,7 +23,7 @@ import {
     EmailConfiguration,
     Kafka,
 } from 'common';
-// import moment from 'moment';
+import moment from 'moment';
 import Config from '../Config';
 import { ObjectMapper } from 'jackson-js';
 
@@ -50,20 +50,20 @@ export default class OtpService {
             let otpVerify: IOtpVerify = await this.cacheService.findOtpValidation(otpRequest.id);
             otpVerify.failCount = otpVerify.failCount + 1;
             otpVerify.count = otpVerify.count + 1;
-            // if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, config.app.otpMaxGenTime, 's'))) {
-            //     throw new Error(constants.OTP_GENERATE_TO_FAST);
-            // }
+            if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, config.app.otpMaxGenTime, 's'))) {
+                throw new Error(constants.OTP_GENERATE_TO_FAST);
+            }
             if (otpVerify.count >= config.app.otpMaxGenTime) {
                 throw new Error(constants.OTP_LIMIT_GENERATE);
             }
             if (otpVerify.failCount >= config.app.otpFailRetryTimes) {
-                // if (
-                //     moment(now).isBefore(
-                //         Utils.addTime(otpVerify.latestRequest, config.app.otpTemporarilyLockedTime, 's')
-                //     )
-                // ) {
-                //     throw new Error(constants.OTP_TEMPORARILY_LOCKED);
-                // }
+                if (
+                    moment(now).isBefore(
+                        Utils.addTime(otpVerify.latestRequest, config.app.otpTemporarilyLockedTime, 's')
+                    )
+                ) {
+                    throw new Error(constants.OTP_TEMPORARILY_LOCKED);
+                }
                 otpVerify.failCount = 1;
             }
             this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
