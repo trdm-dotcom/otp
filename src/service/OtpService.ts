@@ -7,8 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import * as constants from '../Constants';
 import { Inject, Service } from 'typedi';
 import CacheService from './CacheService';
-import IOtpVerify from '../model/IOtpVerify';
-import { Otp } from '../model/Otp';
+import IOtpVerify from '../model/redis/IOtpVerify';
+import { Otp } from '../model/redis/Otp';
 import IVerifyOtpResponse from '../model/response/IVerifyOtpResponse';
 import { OtpIdType } from '../model/enum/OtpIdType';
 import { OtpTxtType } from '../model/enum/OtpTxtType';
@@ -23,7 +23,7 @@ import {
     EmailConfiguration,
     Kafka,
 } from 'common';
-import moment from 'moment';
+import * as moment from 'moment';
 import Config from '../Config';
 import { ObjectMapper } from 'jackson-js';
 
@@ -194,7 +194,7 @@ export default class OtpService {
                 expiredTime: expiredTime,
             };
             this.cacheService.removeVerifiedOtp(verifyOtpRequest.otpId);
-            this.cacheService.addOtpKey(otpKey, redisOtp, otpLifeTime);
+            this.cacheService.addOtpKey(redisOtp.id, redisOtp, otpLifeTime);
             return response;
         } catch (err: any) {
             Logger.error(`verifyOtp error ${err.message}`);

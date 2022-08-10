@@ -1,7 +1,7 @@
 import { Inject, Service } from 'typedi';
 import RedisService, { REDIS_KEY } from './RedisService';
-import IOtpVerify from '../model/IOtpVerify';
-import { Otp } from '../model/Otp';
+import IOtpVerify from '../model/redis/IOtpVerify';
+import { Otp } from '../model/redis/Otp';
 import * as constants from '../Constants';
 import { Utils } from 'common';
 
