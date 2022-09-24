@@ -80,16 +80,6 @@ let Config = {
     },
 };
 
-// try {
-//     const env = require('./env');
-//     if (env) {
-//         Config = { ...Config, ...env(Config) };
-//     }
-//     console.log(`config: ${JSON.stringify(Config)}`);
-// } catch (e) {
-//     console.log(`error while load env.js :${e}`);
-// }
-
 Config.kafkaConsumerOptions = {
     ...(Config.kafkaCommonOptions ? Config.kafkaCommonOptions : {}),
     ...(Config.kafkaConsumerOptions ? Config.kafkaConsumerOptions : {}),

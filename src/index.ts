@@ -10,23 +10,23 @@ Logger.info('Starting...');
 
 async function init() {
     Logger.info('run service otp');
-    const redisService = Container.get(RedisService);
-    redisService.init();
+    const redisService = await Container.get(RedisService);
+    await redisService.init();
     await Kafka.create(
         config,
         true,
         null,
         {
-          serviceName: config.clusterId,
-          nodeId: config.nodeId,
+            serviceName: config.clusterId,
+            nodeId: config.nodeId,
         },
         config.kafkaProducerOptions,
         {},
         config.kafkaConsumerOptions,
-        {},
-      );
-      const requestHandler = Container.get(RequestHandler);
-      requestHandler.init();
+        {}
+    );
+    const requestHandler = await Container.get(RequestHandler);
+    await requestHandler.init();
 }
 
 init().catch((error: any) => {
