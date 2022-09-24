@@ -26,9 +26,9 @@ export default class RequestHandler {
             Logger.info('Endpoint received message: ', message);
             switch (message.uri) {
                 case 'post:/api/v1/otp':
-                    return this.otpService.generateAndSendOtp(message.data);
+                    return this.otpService.generateAndSendOtp(message.data, message.transactionId);
                 case 'post:/api/v1/otp/verify':
-                    return this.otpService.verifyOtp(message.data);
+                    return this.otpService.verifyOtp(message.data, message.transactionId);
             }
             return false;
         }

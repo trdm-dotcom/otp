@@ -2,7 +2,7 @@ import {createClient, RedisClientType} from 'redis';
 import { Service } from 'typedi';
 import config from '../Config';
 import { Logger } from 'common';
-import * as Constants from '../Constants';
+import Constants from '../Constants';
 
 const DATA_TYPE = {
     UNDEFINED: 'a',

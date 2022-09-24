@@ -2,8 +2,8 @@ import { Inject, Service } from 'typedi';
 import RedisService, { REDIS_KEY } from './RedisService';
 import IOtpVerify from '../model/redis/IOtpVerify';
 import { Otp } from '../model/redis/Otp';
-import * as constants from '../Constants';
 import { Utils } from 'common';
+import Constants from '../Constants';
 
 @Service()
 export default class CacheService {
@@ -18,7 +18,7 @@ export default class CacheService {
         if (data) {
             return data;
         } else {
-            throw new Error(constants.OBJECT_NOT_FOUND);
+            throw new Error(Constants.OBJECT_NOT_FOUND);
         }
     }
 
@@ -36,7 +36,7 @@ export default class CacheService {
         if (data) {
             return data;
         } else {
-            throw new Error(constants.OTP_ID_INVALID);
+            throw new Error(Constants.OTP_ID_INVALID);
         }
     }
 
