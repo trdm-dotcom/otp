@@ -18,7 +18,7 @@ async function init() {
         null,
         {
             serviceName: config.clusterId,
-            nodeId: config.nodeId,
+            nodeId: '1',
         },
         config.kafkaProducerOptions,
         {},
