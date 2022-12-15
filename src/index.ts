@@ -8,28 +8,27 @@ import { Container } from 'typedi';
 Logger.create(config.logger.config, true);
 Logger.info('Starting...');
 
-async function init() {
-    Logger.info('run service otp');
-    const redisService = await Container.get(RedisService);
-    await redisService.init();
-    await Kafka.create(
-        config,
-        true,
-        null,
-        {
-            serviceName: config.clusterId,
-            nodeId: '1',
-        },
-        config.kafkaProducerOptions,
-        {},
-        config.kafkaConsumerOptions,
-        {}
-    );
-    const requestHandler = await Container.get(RequestHandler);
-    await requestHandler.init();
+function init() {
+    try {
+        Logger.info('run service otp');
+        Kafka.create(
+            config,
+            true,
+            null,
+            {
+                serviceName: config.clusterId,
+                nodeId: config.clientId,
+            },
+            config.kafkaProducerOptions,
+            {},
+            config.kafkaConsumerOptions,
+            {}
+        );
+        Promise.all([Container.get(RedisService).init(), Container.get(RequestHandler).init()]);
+    } catch (error) {
+        Logger.error(error);
+        process.exit(1);
+    }
 }
 
-init().catch((error: any) => {
-    Logger.error(error);
-    process.exit(1);
-});
+init();
