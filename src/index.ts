@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 import config from './Config';
-import RedisService from './service/RedisService';
 import RequestHandler from './consumer/RequestHandler';
 import { Logger, Kafka } from 'common';
 import { Container } from 'typedi';
@@ -24,7 +23,7 @@ function init() {
             config.kafkaConsumerOptions,
             {}
         );
-        Promise.all([Container.get(RedisService).init(), Container.get(RequestHandler).init()]);
+        Container.get(RequestHandler).init();
     } catch (error) {
         Logger.error(error);
         process.exit(1);
