@@ -35,7 +35,7 @@ export default class OtpService {
     public async generateAndSendOtp(otpRequest: IOtpRequest, transactionId: string | number): Promise<IOtpResponse> {
         Logger.info(`${transactionId} generateAndSendOtp()`)
         const now: Date = new Date();
-        const invalidParams = new Errors.InvalidParameterError();
+        let invalidParams = new Errors.InvalidParameterError();
         Utils.validate(otpRequest.id, 'id').setRequire().throwValid(invalidParams);
         Utils.validate(otpRequest.idType, 'idType').setRequire().throwValid(invalidParams);
         Utils.validate(otpRequest.txtType, 'txtType').setRequire().throwValid(invalidParams);
@@ -149,7 +149,7 @@ export default class OtpService {
     public async verifyOtp(verifyOtpRequest: IVerifyOtpRequest, transactionId: string | number): Promise<IVerifyOtpResponse> {
         Logger.error(`${transactionId} verifyOtp()`);
         let now: Date = new Date();
-        const invalidParams = new Errors.InvalidParameterError();
+        let invalidParams = new Errors.InvalidParameterError();
         Utils.validate(verifyOtpRequest.otpId, 'otpId').setRequire().throwValid(invalidParams);
         Utils.validate(verifyOtpRequest.otpValue, 'otpValue').setRequire().throwValid(invalidParams);
         invalidParams.throwErr();
