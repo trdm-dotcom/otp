@@ -23,7 +23,7 @@ export default class RequestHandler {
         if (message == null || message.data == null) {
             return Promise.reject(new Errors.SystemError());
         } else {
-            Logger.info('Endpoint received message: ', message);
+            Logger.info(`Endpoint received message: ${JSON.stringify(message)}`);
             switch (message.uri) {
                 case 'post:/api/v1/otp':
                     return this.otpService.generateAndSendOtp(message.data, message.transactionId);
