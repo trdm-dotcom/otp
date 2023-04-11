@@ -28,12 +28,12 @@ let Config = {
     },
     key: {
       otp: {
-        privateKey: 'external/key/otp_private.key',
-        publicKey: 'external/key/otp_public.key',
+        privateKey: './../external/key/otp_private.key',
+        publicKey: './../external/key/otp_public.key',
       },
       jwt: {
-        publicKey: 'external/key/jwt_public.key',
-        privateKey: 'external/key/jwt_private.key',
+        publicKey: './../external/key/jwt_public.key',
+        privateKey: './../external/key/jwt_private.key',
       },
     },
     temmplate: {
