@@ -13,14 +13,15 @@ import { OtpIdType } from '../model/enum/OtpIdType';
 import { OtpTxtType } from '../model/enum/OtpTxtType';
 import { totp } from 'otplib';
 import {
-    Logger,
-    Errors,
-    Utils,
-    NotificationMessage,
-    MethodEnum,
-    SmsConfiguration,
-    EmailConfiguration,
-    Kafka,
+  Logger,
+  Errors,
+  Utils,
+  NotificationMessage,
+  MethodEnum,
+  SmsConfiguration,
+  EmailConfiguration,
+  Kafka,
+  FirebaseConfiguration,
 } from 'common';
 import * as moment from 'moment';
 import Config from '../Config';
@@ -29,176 +30,167 @@ import Constants from '../Constants';
 
 @Service()
 export default class OtpService {
-    @Inject()
-    private cacheService: CacheService;
+  @Inject()
+  private cacheService: CacheService;
 
-    public async generateAndSendOtp(otpRequest: IOtpRequest, transactionId: string | number): Promise<IOtpResponse> {
-        Logger.info(`${transactionId} generateAndSendOtp()`)
-        const now: Date = new Date();
-        let invalidParams = new Errors.InvalidParameterError();
-        Utils.validate(otpRequest.id, 'id').setRequire().throwValid(invalidParams);
-        Utils.validate(otpRequest.idType, 'idType').setRequire().throwValid(invalidParams);
-        Utils.validate(otpRequest.txtType, 'txtType').setRequire().throwValid(invalidParams);
-        invalidParams.throwErr();
-        if (!Object.values(OtpIdType).includes(otpRequest.idType)) {
-            throw new Errors.GeneralError(Constants.INVALID_ID_TYPE);
-        }
-        if (!Object.values(OtpTxtType).includes(otpRequest.txtType)) {
-            throw new Errors.GeneralError(Constants.INVALID_TYPE);
-        }
+  public async generateAndSendOtp(otpRequest: IOtpRequest, transactionId: string | number): Promise<IOtpResponse> {
+    const now: Date = new Date();
+    let invalidParams = new Errors.InvalidParameterError();
+    Utils.validate(otpRequest.id, 'id').setRequire().throwValid(invalidParams);
+    Utils.validate(otpRequest.idType, 'idType').setRequire().throwValid(invalidParams);
+    Utils.validate(otpRequest.txtType, 'txtType').setRequire().throwValid(invalidParams);
+    invalidParams.throwErr();
+    if (!Object.values(OtpIdType).includes(otpRequest.idType)) {
+      throw new Errors.GeneralError(Constants.INVALID_ID_TYPE);
+    }
+    if (!Object.values(OtpTxtType).includes(otpRequest.txtType)) {
+      throw new Errors.GeneralError(Constants.INVALID_TYPE);
+    }
 
-        try {
-            let otpVerify: IOtpVerify = await this.cacheService.findOtpValidation(otpRequest.id);
-            otpVerify.failCount = otpVerify.failCount + 1;
-            otpVerify.count = otpVerify.count + 1;
-            if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, config.app.otpMaxGenTime, 's'))) {
-                throw new Error(Constants.OTP_GENERATE_TO_FAST);
-            }
-            if (otpVerify.count >= config.app.otpMaxGenTime) {
-                throw new Error(Constants.OTP_LIMIT_GENERATE);
-            }
-            if (otpVerify.failCount >= config.app.otpFailRetryTimes) {
-                if (
-                    moment(now).isBefore(
-                        Utils.addTime(otpVerify.latestRequest, config.app.otpTemporarilyLockedTime, 's')
-                    )
-                ) {
-                    throw new Error(Constants.OTP_TEMPORARILY_LOCKED);
-                }
-                otpVerify.failCount = 1;
-            }
-            this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
-        } catch (err: any) {
-            Logger.error(`${transactionId} generateAndSendOtp error ${err}`);
-            if (err.message != Constants.OBJECT_NOT_FOUND) {
-                throw new Errors.GeneralError(err.message);
-            }
-            let otpVerify: IOtpVerify = {
-                otpId: otpRequest.id,
-                failCount: 0,
-                count: 1,
-                latestRequest: now,
-            };
-            Logger.info(`${transactionId} otpValidation Info: ${otpVerify}`);
-            this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
+    try {
+      let otpVerify: IOtpVerify = await this.cacheService.findOtpValidation(otpRequest.id);
+      otpVerify.failCount = otpVerify.failCount + 1;
+      otpVerify.count = otpVerify.count + 1;
+      if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, config.app.otpMaxGenTime, 's'))) {
+        throw new Error(Constants.OTP_GENERATE_TO_FAST);
+      }
+      if (otpVerify.count >= config.app.otpMaxGenTime) {
+        throw new Error(Constants.OTP_LIMIT_GENERATE);
+      }
+      if (otpVerify.failCount >= config.app.otpFailRetryTimes) {
+        if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, config.app.otpTemporarilyLockedTime, 's'))) {
+          throw new Error(Constants.OTP_TEMPORARILY_LOCKED);
         }
-        const objectMapper: ObjectMapper = new ObjectMapper();
-        let otpPrivateKey: Buffer = utils.getKey(config.app.key.otp.privateKey);
-        let otpId: string = uuidv4();
-        let otpLifeTime: number = 0;
-        let notificationMessage: NotificationMessage = new NotificationMessage();
-        notificationMessage.setLocale(otpRequest.headers['accept-language']);
-        switch (otpRequest.idType) {
-            case OtpIdType.EMAIL: {
-                otpLifeTime = config.app.otpLifeTime.email;
-                notificationMessage.setMethod(MethodEnum.EMAIL);
-                let emailConfiguration: EmailConfiguration = new EmailConfiguration();
-                emailConfiguration.setToList([otpRequest.id]);
-                emailConfiguration.setSubject(Constants.SUBJECT[otpRequest.txtType][otpRequest.headers['accept-language']]);
-                notificationMessage.setConfiguration(emailConfiguration, objectMapper);
-                break;
-            }
-            case OtpIdType.SMS: {
-                otpLifeTime = config.app.otpLifeTime.sms;
-                notificationMessage.setMethod(MethodEnum.SMS);
-                let smsConfiguration: SmsConfiguration = new SmsConfiguration();
-                smsConfiguration.setPhoneNumber(otpRequest.id);
-                notificationMessage.setConfiguration(smsConfiguration, objectMapper);
-                break;
-            }
-        }
-        totp.options = {
-            digits: 6,
-            step: otpLifeTime,
+        otpVerify.failCount = 1;
+      }
+      this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
+    } catch (err: any) {
+      Logger.error(`${transactionId} generateAndSendOtp error ${err}`);
+      if (err.message != Constants.OBJECT_NOT_FOUND) {
+        throw new Errors.GeneralError(err.message);
+      }
+      const otpVerify: IOtpVerify = {
+        otpId: otpRequest.id,
+        failCount: 0,
+        count: 1,
+        latestRequest: now,
+      };
+      Logger.info(`${transactionId} otpValidation Info: ${otpVerify}`);
+      this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
+    }
+    const objectMapper: ObjectMapper = new ObjectMapper();
+    const otpPrivateKey: Buffer = utils.getKey(config.app.key.otp.privateKey);
+    const otpId: string = uuidv4();
+    const otpLifeTime: number = config.app.otpLifeTime;
+    let notificationMessage: NotificationMessage = new NotificationMessage();
+    notificationMessage.setLocale(otpRequest.headers['accept-language']);
+    switch (otpRequest.idType) {
+      case OtpIdType.EMAIL: {
+        notificationMessage.setMethod(MethodEnum.EMAIL);
+        const emailConfiguration: EmailConfiguration = new EmailConfiguration();
+        emailConfiguration.setToList([otpRequest.id]);
+        emailConfiguration.setSubject(Constants.SUBJECT[otpRequest.txtType][otpRequest.headers['accept-language']]);
+        notificationMessage.setConfiguration(emailConfiguration, objectMapper);
+        break;
+      }
+      case OtpIdType.SMS: {
+        notificationMessage.setMethod(MethodEnum.SMS);
+        const smsConfiguration: SmsConfiguration = new SmsConfiguration();
+        smsConfiguration.setPhoneNumber(otpRequest.id);
+        notificationMessage.setConfiguration(smsConfiguration, objectMapper);
+        break;
+      }
+      case OtpIdType.FIREBASE: {
+        notificationMessage.setMethod(MethodEnum.FIREBASE);
+        const firebaseConfiguration: FirebaseConfiguration = new FirebaseConfiguration();
+        firebaseConfiguration.setToken(otpRequest.id);
+        notificationMessage.setConfiguration(firebaseConfiguration, objectMapper);
+        break;
+      }
+    }
+    totp.options = {
+      digits: 6,
+      step: otpLifeTime,
+    };
+    const otpValue: string = totp.generate(otpPrivateKey.toString());
+    const otp: Otp = new Otp(otpId, otpValue, otpRequest.txtType, otpRequest.idType);
+    const value: Object = this.valueTemplate(otpValue, otpRequest, otpLifeTime / 60);
+    const key: string =
+      Config.app.temmplate[otpRequest.headers['accept-language']][otpRequest.txtType.toLowerCase()][
+        otpRequest.idType.toLowerCase()
+      ];
+    const template: Map<string, Object> = new Map<string, Object>([[key, value]]);
+    notificationMessage.setTemplate(template);
+
+    Kafka.getInstance().sendMessage(transactionId.toString(), Config.topic.notification, '', notificationMessage);
+
+    this.cacheService.addOtp(otpId, otp, otpLifeTime);
+    const response: IOtpResponse = {
+      otpId: otpId,
+      expiredTime: Utils.addTime(now, otpLifeTime, 's'),
+    };
+    return response;
+  }
+
+  private valueTemplate(otpValue: string, otpRequest: IOtpRequest, expiredInMinute: number): Object {
+    switch (otpRequest.idType) {
+      case OtpIdType.EMAIL: {
+        return {
+          otp: otpValue,
+          expiredInMinute: expiredInMinute,
         };
-        let otpValue: string = totp.generate(otpPrivateKey.toString());
-        let expiredTime: Date = Utils.addTime(now, otpLifeTime, 's');
-        let otp: Otp = new Otp(otpId, otpValue, otpRequest.txtType, otpRequest.idType);
-
-        let value: Object = this.valueTemplate(otpValue, otpRequest, otpLifeTime / 60);
-        let key: string = Config.app.temmplate[otpRequest.headers['accept-language']][otpRequest.txtType.toLowerCase()][otpRequest.idType.toLowerCase()];
-        let template: Map<string, Object> = new Map<string, Object>([[key, value]]);
-        notificationMessage.setTemplate(template);
-        
-        Kafka.getInstance().sendMessage(transactionId.toString(), Config.topic.notification, '', notificationMessage);
-
-        this.cacheService.addOtp(otpId, otp, otpLifeTime);
-        let response: IOtpResponse = {
-            otpId: otpId,
-            expiredTime: expiredTime,
+      }
+      default: {
+        return {
+          content: otpValue,
         };
-        return response;
+      }
     }
+  }
 
-    private valueTemplate(otpValue: string, otpRequest: IOtpRequest, expiredInMinute: number): Object {
-        switch (otpRequest.idType) {
-            case OtpIdType.EMAIL: {
-                return {
-                    otp: otpValue,
-                    expiredInMinute: expiredInMinute,
-                };
-            }
-            case OtpIdType.SMS: {
-                return {
-                    otp: otpValue,
-                };
-            }
-        }
+  public async verifyOtp(
+    verifyOtpRequest: IVerifyOtpRequest,
+    transactionId: string | number
+  ): Promise<IVerifyOtpResponse> {
+    let now: Date = new Date();
+    let invalidParams = new Errors.InvalidParameterError();
+    Utils.validate(verifyOtpRequest.otpId, 'otpId').setRequire().throwValid(invalidParams);
+    Utils.validate(verifyOtpRequest.otpValue, 'otpValue').setRequire().throwValid(invalidParams);
+    invalidParams.throwErr();
+    try {
+      let redisOtp: Otp = await this.cacheService.findOtp(verifyOtpRequest.otpId);
+      const otpLifeTime: number = config.app.otpLifeTime;
+      let otpPrivateKey: Buffer = utils.getKey(config.app.key.otp.privateKey);
+      totp.options = {
+        digits: 6,
+        step: otpLifeTime,
+      };
+      let result = totp.verify({ token: verifyOtpRequest.otpValue, secret: otpPrivateKey.toString() });
+      if (!result) {
+        throw new Error(Constants.INCORRECT_OTP);
+      }
+      const otpVerifyTime = config.app.otpVerifyTime;
+      let expiredTime: Date = Utils.addTime(now, otpVerifyTime, 's');
+      let jwtPrivateKey: Buffer = utils.getKey(config.app.key.jwt.privateKey);
+      let otpKey: string = await utils.generateToken(
+        {
+          txType: redisOtp.otpTxType,
+          idType: redisOtp.otpIdType,
+          id: redisOtp.id,
+        },
+        `${otpVerifyTime}s`,
+        jwtPrivateKey
+      );
+      let response: IVerifyOtpResponse = {
+        otpKey: otpKey,
+        expiredTime: expiredTime,
+      };
+      this.cacheService.removeVerifiedOtp(verifyOtpRequest.otpId);
+      this.cacheService.addOtpKey(redisOtp.id, redisOtp, otpLifeTime);
+      return response;
+    } catch (err: any) {
+      Logger.error(`${transactionId} verifyOtp error ${err.message}`);
+      throw new Errors.GeneralError(err.message);
     }
-
-    public async verifyOtp(verifyOtpRequest: IVerifyOtpRequest, transactionId: string | number): Promise<IVerifyOtpResponse> {
-        Logger.error(`${transactionId} verifyOtp()`);
-        let now: Date = new Date();
-        let invalidParams = new Errors.InvalidParameterError();
-        Utils.validate(verifyOtpRequest.otpId, 'otpId').setRequire().throwValid(invalidParams);
-        Utils.validate(verifyOtpRequest.otpValue, 'otpValue').setRequire().throwValid(invalidParams);
-        invalidParams.throwErr();
-        try {
-            let redisOtp: Otp = await this.cacheService.findOtp(verifyOtpRequest.otpId);
-            let otpLifeTime: number = 0;
-            switch (redisOtp.otpIdType) {
-                case OtpIdType.EMAIL:
-                    otpLifeTime = config.app.otpLifeTime.email;
-                    break;
-                case OtpIdType.SMS:
-                    otpLifeTime = config.app.otpLifeTime.sms;
-                    break;
-                default:
-                    otpLifeTime = config.app.otpLifeTime.email;
-                    break;
-            }
-
-            let otpPrivateKey: Buffer = utils.getKey(config.app.key.otp.privateKey);
-            totp.options = {
-                digits: 6,
-                step: otpLifeTime,
-            };
-            let result = totp.verify({ token: verifyOtpRequest.otpValue, secret: otpPrivateKey.toString() });
-            if (!result) {
-                throw new Error(Constants.INCORRECT_OTP);
-            }
-            otpLifeTime = config.app.otpVerifyTime;
-            let expiredTime: Date = Utils.addTime(now, otpLifeTime, 's');
-            let jwtPrivateKey: Buffer = utils.getKey(config.app.key.jwt.privateKey);
-            let otpKey: string = await utils.generateToken(
-                {
-                    txType: redisOtp.otpTxType,
-                    idType: redisOtp.otpIdType,
-                    id: redisOtp.id,
-                },
-                `${otpLifeTime}s`,
-                jwtPrivateKey
-            );
-            let response: IVerifyOtpResponse = {
-                otpKey: otpKey,
-                expiredTime: expiredTime,
-            };
-            this.cacheService.removeVerifiedOtp(verifyOtpRequest.otpId);
-            this.cacheService.addOtpKey(redisOtp.id, redisOtp, otpLifeTime);
-            return response;
-        } catch (err: any) {
-            Logger.error(`${transactionId} verifyOtp error ${err.message}`);
-            throw new Errors.GeneralError(err.message);
-        }
-    }
+  }
 }

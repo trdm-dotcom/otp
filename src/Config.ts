@@ -21,11 +21,8 @@ let Config = {
     otpMaxGenTime: 10, // seconds
     otpFailRetryTimes: 5,
     otpTemporarilyLockedTime: 1800, // seconds
-    otpVerifyTime: 86400, // seconds
-    otpLifeTime: {
-      email: 300,
-      sms: 300,
-    },
+    otpVerifyTime: 300, // seconds
+    otpLifeTime: 300, // seconds
     key: {
       otp: {
         privateKey: './../external/key/otp_private.key',
@@ -40,21 +37,23 @@ let Config = {
       vi: {
         reset_password: {
           email: 'reset_password_vi',
-          sms: 'sms_otp_vi',
+          sms: 'push_up',
+          firebase: 'push_up',
         },
         verify: {
           email: 'email_otp_verify_vi',
-          sms: 'sms_otp_vi',
+          sms: 'push_up',
+          firebase: 'push_up',
         },
       },
       en: {
         reset_password: {
           email: 'reset_password_en',
-          sms: 'sms_otp_en',
+          sms: 'push_up',
         },
         verify: {
           email: 'email_otp_verify_en',
-          sms: 'sms_otp_en',
+          sms: 'push_up',
         },
       },
     },
