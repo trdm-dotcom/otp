@@ -52,31 +52,35 @@ export default class OtpService {
       otpVerify.failCount = otpVerify.failCount + 1;
       otpVerify.count = otpVerify.count + 1;
       if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, config.app.otpMaxGenTime, 's'))) {
-        throw new Error(Constants.OTP_GENERATE_TO_FAST);
+        throw new Errors.GeneralError(Constants.OTP_GENERATE_TO_FAST);
       }
       if (otpVerify.count >= config.app.otpMaxGenTime) {
-        throw new Error(Constants.OTP_LIMIT_GENERATE);
+        throw new Errors.GeneralError(Constants.OTP_LIMIT_GENERATE);
       }
       if (otpVerify.failCount >= config.app.otpFailRetryTimes) {
         if (moment(now).isBefore(Utils.addTime(otpVerify.latestRequest, config.app.otpTemporarilyLockedTime, 's'))) {
-          throw new Error(Constants.OTP_TEMPORARILY_LOCKED);
+          throw new Errors.GeneralError(Constants.OTP_TEMPORARILY_LOCKED);
         }
         otpVerify.failCount = 1;
       }
       this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
-    } catch (err: any) {
+    } catch (err) {
       Logger.error(`${transactionId} generateAndSendOtp error ${err}`);
-      if (err.message != Constants.OBJECT_NOT_FOUND) {
-        throw new Errors.GeneralError(err.message);
+      if (err instanceof Errors.GeneralError) {
+        if (err.code != Constants.OBJECT_NOT_FOUND) {
+          throw err
+        }
+        const otpVerify: IOtpVerify = {
+          otpId: otpRequest.id,
+          failCount: 0,
+          count: 1,
+          latestRequest: now,
+        };
+        Logger.info(`${transactionId} otpValidation Info: ${otpVerify}`);
+        this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
+      } else {
+        throw new Errors.GeneralError();
       }
-      const otpVerify: IOtpVerify = {
-        otpId: otpRequest.id,
-        failCount: 0,
-        count: 1,
-        latestRequest: now,
-      };
-      Logger.info(`${transactionId} otpValidation Info: ${otpVerify}`);
-      this.cacheService.addOtpValidation(otpRequest.id, otpVerify);
     }
     const objectMapper: ObjectMapper = new ObjectMapper();
     const otpPrivateKey: Buffer = utils.getKey(config.app.key.otp.privateKey);
@@ -167,7 +171,7 @@ export default class OtpService {
       };
       let result = totp.verify({ token: verifyOtpRequest.otpValue, secret: otpPrivateKey.toString() });
       if (!result) {
-        throw new Error(Constants.INCORRECT_OTP);
+        throw new Errors.GeneralError(Constants.INCORRECT_OTP);
       }
       const otpVerifyTime = config.app.otpVerifyTime;
       let expiredTime: Date = Utils.addTime(now, otpVerifyTime, 's');
@@ -188,9 +192,13 @@ export default class OtpService {
       this.cacheService.removeVerifiedOtp(verifyOtpRequest.otpId);
       this.cacheService.addOtpKey(redisOtp.id, redisOtp, otpLifeTime);
       return response;
-    } catch (err: any) {
+    } catch (err) {
       Logger.error(`${transactionId} verifyOtp error ${err.message}`);
-      throw new Errors.GeneralError(err.message);
+      if (err instanceof Errors.GeneralError) {
+        throw err;
+      } else {
+        throw new Errors.GeneralError();
+      }
     }
   }
 }
