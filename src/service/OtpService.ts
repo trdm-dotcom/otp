@@ -12,21 +12,12 @@ import IVerifyOtpResponse from '../model/response/IVerifyOtpResponse';
 import { OtpIdType } from '../model/enum/OtpIdType';
 import { OtpTxtType } from '../model/enum/OtpTxtType';
 import { totp } from 'otplib';
-import {
-  Logger,
-  Errors,
-  Utils,
-  NotificationMessage,
-  MethodEnum,
-  SmsConfiguration,
-  EmailConfiguration,
-  Kafka,
-  FirebaseConfiguration,
-} from 'common';
+import { Logger, Errors, Utils, Models } from 'common';
 import * as moment from 'moment';
 import Config from '../Config';
 import { ObjectMapper } from 'jackson-js';
 import Constants from '../Constants';
+import { getInstance } from './KafkaProducerService';
 
 @Service()
 export default class OtpService {
@@ -68,7 +59,7 @@ export default class OtpService {
       Logger.error(`${transactionId} generateAndSendOtp error ${err}`);
       if (err instanceof Errors.GeneralError) {
         if (err.code != Constants.OBJECT_NOT_FOUND) {
-          throw err
+          throw err;
         }
         const otpVerify: IOtpVerify = {
           otpId: otpRequest.id,
@@ -86,27 +77,27 @@ export default class OtpService {
     const otpPrivateKey: Buffer = utils.getKey(config.app.key.otp.privateKey);
     const otpId: string = uuidv4();
     const otpLifeTime: number = config.app.otpLifeTime;
-    let notificationMessage: NotificationMessage = new NotificationMessage();
+    let notificationMessage: Models.NotificationMessage = new Models.NotificationMessage();
     notificationMessage.setLocale(otpRequest.headers['accept-language']);
     switch (otpRequest.idType) {
       case OtpIdType.EMAIL: {
-        notificationMessage.setMethod(MethodEnum.EMAIL);
-        const emailConfiguration: EmailConfiguration = new EmailConfiguration();
+        notificationMessage.setMethod(Models.MethodEnum.EMAIL);
+        const emailConfiguration: Models.EmailConfiguration = new Models.EmailConfiguration();
         emailConfiguration.setToList([otpRequest.id]);
         emailConfiguration.setSubject(Constants.SUBJECT[otpRequest.txtType][otpRequest.headers['accept-language']]);
         notificationMessage.setConfiguration(emailConfiguration, objectMapper);
         break;
       }
       case OtpIdType.SMS: {
-        notificationMessage.setMethod(MethodEnum.SMS);
-        const smsConfiguration: SmsConfiguration = new SmsConfiguration();
+        notificationMessage.setMethod(Models.MethodEnum.SMS);
+        const smsConfiguration: Models.SmsConfiguration = new Models.SmsConfiguration();
         smsConfiguration.setPhoneNumber(otpRequest.id);
         notificationMessage.setConfiguration(smsConfiguration, objectMapper);
         break;
       }
       case OtpIdType.FIREBASE: {
-        notificationMessage.setMethod(MethodEnum.FIREBASE);
-        const firebaseConfiguration: FirebaseConfiguration = new FirebaseConfiguration();
+        notificationMessage.setMethod(Models.MethodEnum.FIREBASE);
+        const firebaseConfiguration: Models.FirebaseConfiguration = new Models.FirebaseConfiguration();
         firebaseConfiguration.setToken(otpRequest.id);
         notificationMessage.setConfiguration(firebaseConfiguration, objectMapper);
         break;
@@ -126,7 +117,7 @@ export default class OtpService {
     const template: Map<string, Object> = new Map<string, Object>([[key, value]]);
     notificationMessage.setTemplate(template);
 
-    Kafka.getInstance().sendMessage(transactionId.toString(), Config.topic.notification, '', notificationMessage);
+    getInstance().sendMessage(transactionId.toString(), Config.topic.notification, '', notificationMessage);
 
     this.cacheService.addOtp(otpId, otp, otpLifeTime);
     const response: IOtpResponse = {

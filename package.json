@@ -5,8 +5,8 @@
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {
-    "test": "node build/src/index.js",
-    "start": "npm run build && node build/src/index.js",
+    "run-local": "node build/src/index.js",
+    "build-local": "npm run build && node build/src/index.js",
     "build": "tsc -p tsconfig.json"
   },
   "keywords": [],
@@ -17,6 +17,7 @@
     "common": "file:../common",
     "jackson-js": "^1.1.0",
     "jsonwebtoken": "^8.5.1",
+    "kafka-common": "file:../kafka-common",
     "moment": "^2.29.3",
     "mongoose": "^6.3.4",
     "otplib": "^12.0.1",
