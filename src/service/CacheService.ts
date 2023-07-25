@@ -14,7 +14,7 @@ export default class CacheService {
     let realKey: string = `${REDIS_KEY.OTP_VALIDATE}_${key}_${Utils.formatDateToDisplay(
       Utils.addTime(new Date(), 7, 'h')
     )}`;
-    let data: IOtpVerify = await this.redisService.get<IOtpVerify>(realKey);
+    let data: IOtpVerify = (await this.redisService.get(realKey)) as IOtpVerify;
     if (data) {
       return data;
     } else {
@@ -27,12 +27,12 @@ export default class CacheService {
     let realKey: string = `${REDIS_KEY.OTP_VALIDATE}_${key}_${Utils.formatDateToDisplay(
       Utils.addTime(new Date(), 7, 'h')
     )}`;
-    this.redisService.set<IOtpVerify>(realKey, otpVerify, { EX: lifeTime });
+    this.redisService.set(realKey, otpVerify, { EX: lifeTime });
   }
 
   public async findOtp(key: string): Promise<Otp> {
     let realKey: string = `${REDIS_KEY.OTP_STORAGE}_${key}`;
-    let data: Otp = await this.redisService.get<Otp>(realKey);
+    let data: Otp = (await this.redisService.get(realKey)) as Otp;
     if (data) {
       return data;
     } else {
@@ -42,16 +42,16 @@ export default class CacheService {
 
   public addOtp(key: string, otp: Otp, otpLifeTime: number): void {
     let realKey: string = `${REDIS_KEY.OTP_STORAGE}_${key}`;
-    this.redisService.set<Otp>(realKey, otp, { EX: otpLifeTime });
+    this.redisService.set(realKey, otp, { EX: otpLifeTime });
   }
 
   public addOtpKey(key: string, otp: Otp, otpExpiredTime: number): void {
     let realKey: string = `${REDIS_KEY.OTP_KEY_STORAGE}_${key}`;
-    this.redisService.set<Otp>(realKey, otp, { EX: otpExpiredTime });
+    this.redisService.set(realKey, otp, { EX: otpExpiredTime });
   }
 
   public removeVerifiedOtp(key: string) {
     let realKey: string = `${REDIS_KEY.OTP_STORAGE}_${key}`;
-    this.redisService.set<any>(realKey, null, { PX: 1 });
+    this.redisService.del(realKey);
   }
 }
