@@ -1,12 +1,9 @@
 import { Utils } from 'common';
-import { v4 as uuid } from 'uuid';
-
-const nodeId = uuid();
 
 let Config = {
   clusterId: 'otp',
-  clientId: `otp-${nodeId}`,
-  nodeId: nodeId,
+  clientId: `otp-${Utils.getEnvNum('ENV_NODE_ID', 0)}`,
+  nodeId: Utils.getEnvNum('ENV_NODE_ID', 0),
   kafkaUrls: Utils.getEnvArr('ENV_KAFKA_URLS', ['localhost:9092']),
   kafkaCommonOptions: {},
   kafkaConsumerOptions: {},
