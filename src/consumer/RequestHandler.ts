@@ -5,6 +5,8 @@ import config from '../Config';
 import { Kafka } from 'kafka-common';
 import { getInstance } from '../service/KafkaProducerService';
 
+const { UriNotFound } = Errors;
+
 @Service()
 export default class RequestHandler {
   @Inject()
@@ -27,8 +29,9 @@ export default class RequestHandler {
           return this.otpService.generateAndSendOtp(message.data, message.transactionId);
         case 'post:/api/v1/otp/verify':
           return this.otpService.verifyOtp(message.data, message.transactionId);
+        default:
+          throw new UriNotFound();
       }
-      return false;
     }
   };
 }
