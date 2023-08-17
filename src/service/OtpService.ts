@@ -84,7 +84,7 @@ export default class OtpService {
         notificationMessage.setMethod(Models.MethodEnum.EMAIL);
         const emailConfiguration: Models.EmailConfiguration = new Models.EmailConfiguration();
         emailConfiguration.setToList([otpRequest.id]);
-        emailConfiguration.setSubject(Constants.SUBJECT[otpRequest.txtType][otpRequest.headers['accept-language']]);
+        emailConfiguration.setSubject(Constants.SUBJECT[otpRequest.txtType]);
         notificationMessage.setConfiguration(emailConfiguration, objectMapper);
         break;
       }
@@ -102,6 +102,9 @@ export default class OtpService {
         notificationMessage.setConfiguration(firebaseConfiguration, objectMapper);
         break;
       }
+      default: {
+        throw new Errors.GeneralError(Constants.INVALID_ID_TYPE);
+      }
     }
     totp.options = {
       digits: 6,
@@ -109,12 +112,13 @@ export default class OtpService {
     };
     const otpValue: string = totp.generate(otpPrivateKey.toString());
     const otp: Otp = new Otp(otpId, otpValue, otpRequest.txtType, otpRequest.idType);
-    const value: Object = this.valueTemplate(otpValue, otpRequest, otpLifeTime / 60);
-    const key: string =
-      Config.app.temmplate[otpRequest.headers['accept-language']][otpRequest.txtType.toLowerCase()][
-        otpRequest.idType.toLowerCase()
-      ];
-    const template: Map<string, Object> = new Map<string, Object>([[key, value]]);
+    const value: any = {
+      otp: otpValue,
+      expiredInMinute: otpLifeTime / 60,
+      action: otpRequest.txtType,
+    };
+    const key: string = Config.app.template[otpRequest.idType.toLowerCase()];
+    const template: Map<string, Object> = new Map<string, any>([[key, value]]);
     notificationMessage.setTemplate(template);
 
     getInstance().sendMessage(transactionId.toString(), Config.topic.notification, '', notificationMessage);
@@ -125,22 +129,6 @@ export default class OtpService {
       expiredTime: Utils.addTime(now, otpLifeTime, 's'),
     };
     return response;
-  }
-
-  private valueTemplate(otpValue: string, otpRequest: IOtpRequest, expiredInMinute: number): Object {
-    switch (otpRequest.idType) {
-      case OtpIdType.EMAIL: {
-        return {
-          otp: otpValue,
-          expiredInMinute: expiredInMinute,
-        };
-      }
-      default: {
-        return {
-          content: otpValue,
-        };
-      }
-    }
   }
 
   public async verifyOtp(

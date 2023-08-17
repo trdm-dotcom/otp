@@ -30,29 +30,10 @@ let Config = {
         privateKey: './../external/key/jwt_private.key',
       },
     },
-    temmplate: {
-      vi: {
-        reset_password: {
-          email: 'reset_password_vi',
-          sms: 'push_up',
-          firebase: 'push_up',
-        },
-        verify: {
-          email: 'email_otp_verify_vi',
-          sms: 'push_up',
-          firebase: 'push_up',
-        },
-      },
-      en: {
-        reset_password: {
-          email: 'reset_password_en',
-          sms: 'push_up',
-        },
-        verify: {
-          email: 'email_otp_verify_en',
-          sms: 'push_up',
-        },
-      },
+    template: {
+      email: 'email_otp_verify',
+      sms: 'otp_verify',
+      firebase: 'otp_verify',
     },
   },
   topic: {

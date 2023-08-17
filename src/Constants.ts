@@ -10,13 +10,8 @@ export default class {
   public static INCORRECT_OTP = 'INCORRECT_OTP';
   public static OTP_ID_INVALID = 'OTP_ID_INVALID';
   public static SUBJECT = {
-    RESET_PASSWORD: {
-      vi: '',
-      en: '',
-    },
-    VERIFY: {
-      vi: '',
-      en: '',
-    },
+    RESET_PASSWORD: 'RESET PASSWORD',
+    VERIFY: 'VERIFY ACCOUNT',
+    REGISTER: 'REGISTER ACCOUNT',
   };
 }
