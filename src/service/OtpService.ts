@@ -98,7 +98,7 @@ export default class OtpService {
       case OtpIdType.FIREBASE: {
         notificationMessage.setMethod(Models.MethodEnum.FIREBASE);
         const firebaseConfiguration: Models.FirebaseConfiguration = new Models.FirebaseConfiguration();
-        firebaseConfiguration.setToken(otpRequest.id);
+        firebaseConfiguration.setTokens([otpRequest.id]);
         notificationMessage.setConfiguration(firebaseConfiguration, objectMapper);
         break;
       }
