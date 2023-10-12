@@ -118,11 +118,10 @@ export default class OtpService {
       action: otpRequest.txtType,
     };
     const key: string = Config.app.template[otpRequest.idType.toLowerCase()];
-    const template: Map<string, Object> = new Map<string, any>([[key, value]]);
+    const template = {};
+    template[key] = value;
     notificationMessage.setTemplate(template);
-
     getInstance().sendMessage(transactionId.toString(), Config.topic.notification, '', notificationMessage);
-
     this.cacheService.addOtp(otpId, otp, otpLifeTime);
     const response: IOtpResponse = {
       otpId: otpId,
