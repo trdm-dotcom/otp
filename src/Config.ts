@@ -2,16 +2,16 @@ import { Utils } from 'common';
 
 let Config = {
   clusterId: 'otp',
-  clientId: `otp-${Utils.getEnvNum('ENV_NODE_ID', 0)}`,
-  nodeId: Utils.getEnvNum('ENV_NODE_ID', 0),
-  kafkaUrls: Utils.getEnvArr('ENV_KAFKA_URLS', ['localhost:9092']),
+  clientId: `otp-${Utils.getEnvNum('ENV_NODE_ID')}`,
+  nodeId: Utils.getEnvNum('ENV_NODE_ID'),
+  kafkaUrls: Utils.getEnvArr('ENV_KAFKA_URLS'),
   kafkaCommonOptions: {},
   kafkaConsumerOptions: {},
   kafkaProducerOptions: {},
   kafkaTopicOptions: {},
   requestHandlerTopics: [],
   redis: {
-    url: `redis://${Utils.getEnvStr('ENV_REDIS_HOST', 'localhost')}:${Utils.getEnvStr('ENV_REDIS_PORT', '6379')}`,
+    url: `redis://${Utils.getEnvStr('ENV_REDIS_HOST')}:${Utils.getEnvStr('ENV_REDIS_PORT')}`,
   },
   app: {
     otpLength: 6,
