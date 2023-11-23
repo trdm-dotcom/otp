@@ -22,12 +22,12 @@ let Config = {
     otpLifeTime: 300, // seconds
     key: {
       otp: {
-        privateKey: '../key/otp_private.key',
+        privateKey: './key/otp_private.key',
         publicKey: '../key/otp_public.key',
       },
       jwt: {
-        publicKey: '../key/jwt_public.key',
-        privateKey: '../key/jwt_private.key',
+        publicKey: './key/jwt_public.key',
+        privateKey: './key/jwt_private.key',
       },
     },
     template: {
